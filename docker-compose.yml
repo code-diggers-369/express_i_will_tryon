@@ -1,0 +1,131 @@
+version: '3.6'
+
+volumes:
+    tryyon-mongo:
+       name: tryyon-mongo
+
+networks:
+    micros:
+        name: micros
+        driver: overlay
+        attachable: true
+    db:
+        name: db
+        driver: overlay
+        attachable: true
+    cache:
+        name: cache
+        driver: overlay
+        attachable: true
+
+services:
+    api:
+        build: 
+            context: ./services/api
+            args:
+                NODE_ENV: development
+        image: tryyon_api:dev
+        ports: 
+            - 3000:3000
+        command: npm run dev
+        environment:
+            NODE_ENV: development
+            API_PORT: 3000
+            USER_MASTER_SERVICE: usermaster:3000
+            COMPANY_MASTER_SERVICE: companymaster:3000
+            FILE_MASTER_SERVICE: filemaster:3000
+            PRODUCT_MASTER_SERVICE: productmaster:3000
+            S3_SECRET_ACCESS_KEY: NozxM/92TsRLNvOWJ9FsKK99awAQVpLQIm8XtHOn
+            S3_ACCESS_KEY_ID: AKIAV3N5RHEXVYXQPZU5
+            S3_REGION: ap-south-1
+            S3_BUCKET_NAME: alphabi-test-bucket
+        volumes:
+            - ./services/api:/app
+        networks:
+            - micros
+            - cache
+
+    usermaster:
+        build: 
+            context: ./services/userMaster
+            args:
+                NODE_ENV: development
+        ports: 
+            - 3001:3000
+        image: tryyon_user_master:dev
+        command: npm run dev
+        environment:
+            NODE_ENV: development
+            API_PORT: 3000
+            MONGODB_PROTOCOL: mongodb
+            MONGODB_HOST: mongodb:27017
+            MONGODB_DB: tryyon
+            TOKEN_KEY: tryyon_auth_secret
+            ADMIN_TOKEN_KEY: tryyon_admin_auth_secret
+            CUSTOMER_TOKEN_KEY: tryyon_customer_auth_secret
+        volumes:
+            - ./services/userMaster:/app
+        networks:
+            - micros
+            - cache
+            - db
+    
+    companymaster:
+        build: 
+            context: ./services/companyMaster
+            args:
+                NODE_ENV: development
+        ports: 
+            - 3002:3000
+        image: tryyon_company_master:dev
+        command: npm run dev
+        environment:
+            NODE_ENV: development
+            API_PORT: 3000
+            MONGODB_PROTOCOL: mongodb
+            MONGODB_HOST: mongodb:27017
+            MONGODB_DB: tryyon
+        volumes:
+            - ./services/companyMaster:/app
+        networks:
+            - micros
+            - cache
+            - db
+
+    productmaster:
+        build: 
+            context: ./services/productMaster
+            args:
+                NODE_ENV: development
+        ports: 
+            - 3003:3000
+        image: tryyon_product_master:dev
+        command: npm run dev
+        environment:
+            NODE_ENV: development
+            API_PORT: 3000
+            MONGODB_PROTOCOL: mongodb
+            MONGODB_HOST: mongodb:27017
+            MONGODB_DB: tryyon
+        volumes:
+            - ./services/productMaster:/app
+        networks:
+            - micros
+            - cache
+            - db
+
+    mongodb:
+        image: mvertes/alpine-mongo
+        ports:
+            - 27017:27017
+        volumes:
+            - tryyon-mongo:/data/db
+        networks:
+            - db 
+    
+    redis:
+        image: redis
+        ports:
+            - 6379:6379
+        networks:
+            - cache
